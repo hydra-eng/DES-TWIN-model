@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: swap_station_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-swap_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swap_secret_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-swap_station_twin}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swap_admin -d swap_station_twin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: swap_station_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  timescale_data:
+    driver: local
+  redis_data:
+    driver: local

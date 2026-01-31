@@ -1,0 +1,11 @@
+# General
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Project specific
+frontend/
+*.log
+tmp/

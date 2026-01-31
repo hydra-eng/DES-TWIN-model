@@ -1,0 +1,25 @@
+1. The "Golden" StackThis stack is chosen for speed (running 1 week of sim in seconds), scale (handling 10,000+ entities), and developer velocity (rich ecosystem).LayerTechnologyWhy this choice?Core EnginePython + SimPyThe industry standard for DES. Unlike "black box" tools, SimPy is a Python library, meaning you can directly use Pandas for data analysis and NumPy for probabilistic distributions (e.g., arrival rates).OrchestratorFastAPIHigh-performance Python API. Critical feature: Native Asynchronous support, allowing it to handle hundreds of "Telemetry WebSockets" (streaming sim data to the frontend) without blocking.DatabaseTimescaleDBThe Game Changer. It is a PostgreSQL extension. It allows you to store Relational Data (Station ID, Location, Config) and Time-Series Data (Battery SoC logs, Queue events) in one DB. You can run SQL joins on them.Queue/JobsRedis + CelerySimulations are CPU-intensive. You cannot run them in the API request loop. You must offload them to a background worker queue.Frontend MapDeck.glCapable of rendering 100,000+ moving points (vehicles) in real-time using WebGL. Far superior to Leaflet/Google Maps markers for high-density simulations.State MgmtZustand (React)Simpler and faster than Redux for handling high-frequency state updates (e.g., a car moving every 100ms).2. System Architecture DiagramThis architecture separates the "Heavy Math" (Workers) from the "User Interaction" (API).Code snippetgraph TD
+    User[User / Browser] -->|HTTP Request: Start Sim| API[FastAPI Gateway]
+    User -->|WebSocket: Listen for Events| API
+
+    subgraph "The Brain (Backend)"
+        API -->|Push Job| Redis[(Redis Queue)]
+        Redis -->|Pop Job| Worker[SimPy Worker Nodes]
+        Worker -->|1. Fetch Config| DB[(TimescaleDB)]
+        Worker -->|2. Run Simulation| Worker
+        Worker -->|3. Stream Live Events| RedisPubSub[Redis Pub/Sub]
+        RedisPubSub -->|Forward to| API
+        Worker -->|4. Bulk Save Results| DB
+    end
+
+    subgraph "The Twin (Data)"
+        DB -->|PostGIS| Geo[Station Locations]
+        DB -->|Hypertables| Logs[Event History]
+    end
+3. Deep Dive: Why These Specific Tools?A. Simulation: SimPy vs. Salabim vs. AnyLogicVerdict: SimPy.Reasoning: You are building a web application, not a desktop model. AnyLogic is expensive and hard to embed. Salabim has built-in animation, but it's "opinionated." SimPy is "bare metal" logic—it gives you total control to emit JSON events exactly how your frontend needs them.B. Database: TimescaleDB vs. InfluxDB vs. MongoDBVerdict: TimescaleDB (PostgreSQL).Reasoning: In a Digital Twin, you have two types of data that must interact:Static: Station A has 10 chargers (Relational).Dynamic: Station A's queue length at 14:00 was 5 (Time-Series).InfluxDB: Great for Dynamic, terrible for Static.MongoDB: Flexible, but slow for complex "Window Function" queries (e.g., "Calculate rolling average wait time for all stations in Sector 4").Timescale: Handles both in standard SQL. You can write:SQL-- Valid SQL in Timescale
+SELECT station.name, AVG(events.wait_time)
+FROM events
+JOIN stations ON events.station_id = stations.id
+WHERE stations.region = 'Downtown'
+GROUP BY station.name;
+C. Visualization: Deck.gl vs. Mapbox GL JSVerdict: Deck.gl (with Mapbox as base).Reasoning: Mapbox is great for maps, but heavy for data. If you try to render 500 moving cars as HTML Markers in Mapbox, the browser will crash. Deck.gl overlays a canvas on top of the map and uses the GPU. It can animate 10,000 cars smoothly at 60fps.4. Recommended Data Structure (Schema)To make the "Scenario Comparison" work, you need a rigid schema.Table 1: scenariosid (UUID)parent_scenario_id (For A/B testing: "This scenario is a child of Baseline")config_json (The specific levers pulled: { "charger_count": 5, "demand_mult": 1.2 })Table 2: simulation_runsidscenario_idstatus (PENDING, RUNNING, COMPLETED, FAILED)compute_time_msTable 3: telemetry_events (Hypertable)time (Timestamp - Primary Key)run_id (Foreign Key)entity_id (Station_01, Car_99)event_type (ARRIVAL, SWAP_START, CHARGE_END)value (JSONB: { "soc": 88, "wait_time": 120 })5. Implementation RoadmapWeek 1 (The Engine): Write a standalone Python script using SimPy. Create a Station class that takes a configuration object. Make it run a 24-hour day and print "Lost Swaps".Week 2 (The API): Wrap that script in a Celery task. Create a FastAPI endpoint /start_sim that triggers the task.Week 3 (The Data): Spin up TimescaleDB. Modify the SimPy script to not print to console, but batch-insert rows into the DB every 100 simulated events.Week 4 (The Visuals): Build the React frontend. Use Deck.gl to poll the API for the latest vehicle positions and render them as moving dots.
