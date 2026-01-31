@@ -7,65 +7,120 @@
 
 ## 📖 Overview
 
-The **Digital Twin Swap Station Simulation** is a high-fidelity decision-support tool designed to model, analyze, and optimize city-wide battery swapping networks. 
+The **Digital Twin Swap Station Simulation** is an enterprise-grade decision-support platform designed to model, analyze, and optimize city-wide battery swapping infrastructure.
 
-Traditional planning for battery swap infrastructure relies on static spreadsheets that fail to capture complex queuing dynamics, grid constraints, and stochastic demand. This project solves that by building a **Discrete Event Simulation (DES)** engine that creates a "Digital Twin" of the network.
+By leveraging **Discrete Event Simulation (DES)**, this system creates a high-fidelity "Digital Twin" of your physical network. It allows operations managers and data scientists to execute counterfactual analysis ("what-if" scenarios) to minimize capital risk and maximize operational efficiency.
 
-**Key Capabilities:**
-*   **Hyper-Realistic Simulation:** Models station physics, including non-linear charging curves, bay occupancy, and battery cooling times.
-*   **What-If Analysis:** Allows operations teams to simulate interventions (e.g., "What if we add 2 chargers to Station A?") and measure impact before spending capital.
-*   **Visual Dashboard:** Interactive map-based visualization to monitor network KPIs like wait times, stockouts, and charger utilization.
+### Key Capabilities
+*   **Stochastic Modeling:** Simulates non-homogeneous Poisson arrival processes to capture realistic demand fluctuations.
+*   **Physics-Based Charging:** Models non-linear Li-ion charging curves (CC-CV), thermal cooling constraints, and grid power limits.
+*   **A/B Scenario Testing:** Run parallel simulations to quantify the impact of adding stations, changing inventory, or upgrading hardware.
+*   **Geospatial Visualization:** Interactive WebGL-powered dashboard for identifying bottlenecks and network hotspots.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
-The system is built as a modern full-stack application:
+The application follows a modern decoupled architecture, separating the simulation kernel from the visualization layer.
 
-### **Backend (The Simulation Engine)**
-*   **Core Logic:** Python & `SimPy` for discrete-event simulation.
-*   **API:** `FastAPI` for high-performance REST endpoints.
-*   **Features:**
-    *   Poisson process arrival generation with hourly demand curves.
-    *   Detailed battery state tracking (SoC, health, cycle count).
-    *   A/B Scenario comparison engine.
+```mermaid
+graph TD
+    subgraph Frontend ["Frontend (React + Vite)"]
+        UI[Dashboard UI]
+        Map[Deck.gl Map Visualization]
+        Store[Zustand State Store]
+    end
 
-### **Frontend (The Command Center)**
-*   **Framework:** React + Vite (TypeScript).
-*   **Visualization:** `Deck.gl` & `MapLibre` for rendering high-performance map layers.
-*   **State Management:** `Zustand` for managing simulation configurations and results.
+    subgraph Backend ["Backend (FastAPI)"]
+        API[REST API Layer]
+        Orchestrator[Simulation Orchestrator]
+    end
+
+    subgraph Engine ["Simulation Kernel (SimPy)"]
+        Station[Station Logic]
+        Battery[Battery Lifecycle]
+        Vehicle[Vehicle & Demand Gen]
+    end
+
+    User[Operations Manager] --> UI
+    UI -->|1. Configure & Start| API
+    API -->|2. Initialize| Orchestrator
+    Orchestrator -->|3. Run DES| Engine
+    Engine -->|4. Emit Telemetry| Orchestrator
+    Orchestrator -->|5. Aggregate KPIs| API
+    API -->|6. Return JSON| Store
+    Store -->|7. Update| Map
+```
+
+---
+
+## ⚙️ Simulation Logic Flow
+
+The core engine models the complex interaction between vehicle demand and station resources. Below is the decision logic for a single vehicle arrival event.
+
+```mermaid
+sequenceDiagram
+    participant V as Vehicle
+    participant S as Station
+    participant BP as Battery Pool
+    participant C as Charger
+
+    Note over V, S: Arrival Event (Poisson Process)
+    V->>S: Request Swap
+    
+    alt Battery Available (SoC > 95%)
+        S->>BP: Get Charged Battery
+        BP-->>S: Battery #123 (100% SoC)
+        S->>V: Swap Battery (90s duration)
+        V-->>S: Return Depleted Battery (20% SoC)
+        S->>V: Depart (Success)
+        S->>C: Queue Depleted Battery
+    else Stockout (No Batteries)
+        S->>V: Log "Lost Swap"
+        V-->>S: Depart (Failure)
+    end
+
+    Note over C, BP: Background Charging Process
+    loop Every Charger
+        C->>C: Check Grid Power Limit
+        C->>C: Cooldown (60s)
+        C->>C: Fast Charge (CC Phase)
+        C->>C: Tapered Charge (CV Phase)
+        C->>BP: Return Fully Charged Battery
+    end
+```
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-*   Python 3.11+
-*   Node.js 18+
+*   **Python 3.11+** (for the simulation engine)
+*   **Node.js 18+** (for the dashboard)
 
 ### 1. Backend Setup
-The backend runs the physics engine and serves the API.
+The backend serves the API and runs the physics engine.
 
 ```bash
 cd backend
 
 # Create and activate virtual environment
 python -m venv venv
-# Windows
+# Windows:
 venv\Scripts\activate
-# Linux/Mac
+# Linux/Mac:
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the server
+# Start the API server
 uvicorn app.main:app --reload
 ```
-*Server will start at `http://127.0.0.1:8000`*
+*The API docs will be available at `http://127.0.0.1:8000/docs`*
 
 ### 2. Frontend Setup
-The frontend provides the interactive dashboard.
+The frontend provides the interactive map and control panel.
 
 ```bash
 cd frontend-v2
@@ -76,48 +131,50 @@ npm install
 # Start development server
 npm run dev
 ```
-*Dashboard will launch at `http://localhost:5173`*
+*Access the dashboard at `http://localhost:5173`*
 
 ---
 
-## 🧪 How It Works (Step-by-Step)
+## 🧪 Simulation Features
 
-We are building this system in layers to ensure accuracy and scalability:
+### 1. Demand Modeling
+*   **Curves:** Configure hourly demand profiles (e.g., Morning Peak, Evening Rush).
+*   **Jitter:** Add stochastic variance to arrival times to simulate real-world unpredictability.
 
-### **Phase 1: The Physics Core (Current Status)**
-We have implemented the fundamental laws of the network:
-1.  **Station Logic:** Modeled as a `G/G/k` queue. Vehicles arrive, request a charged battery, and swap if available.
-2.  **Battery Lifecycle:** Batteries cycle through `Available` -> `Swapped` -> `Depleted` -> `Charging` (Non-linear curve) -> `Available`.
-3.  **Telemetry:** Every event (arrival, swap, charge start) is logged with microsecond precision.
+### 2. Station Physics
+*   **Bays:** Limited queuing capacity (`G/G/k` queue).
+*   **Grid Constraints:** Cap the maximum power draw per station (e.g., 200kW limit).
+*   **Batteries:** Track individual battery health and cycle counts.
 
-### **Phase 2: Scenario Engine**
-We enable "Counterfactual Analysis":
-*   Users can define a **Baseline** (current state) and a **Scenario** (proposed changes).
-*   The engine runs both simulations with identical random seeds to isolate the impact of the intervention.
-*   Metrics like "Lost Swaps" and "Average Wait Time" are compared directly.
-
-### **Phase 3: Visualization & Optimization**
-*   **Heatmaps:** Visualizing stations under stress (Red = High Wait Time).
-*   **Optimization Algorithms:** (Coming Soon) Automatically recommending the optimal distribution of batteries across the city to minimize cost.
+### 3. Analytics
+*   **Wait Times:** Average and 95th percentile wait times.
+*   **Lost Swaps:** Revenue lost due to stockouts.
+*   **Utilization:** Charger uptime and asset efficiency.
 
 ---
 
-## 📂 Project Structure
+## 📂 Repository Structure
 
-```text
-├── backend/
-│   ├── app/
-│   │   ├── simulation/    # SimPy core logic (engine.py, assets.py)
-│   │   ├── api/           # FastAPI routes
-│   │   └── schemas/       # Pydantic data models
-│   └── ...
-└── frontend-v2/
-    ├── src/
-    │   ├── components/    # React UI components (MapViz, StationManager)
-    │   └── store/         # State management
-    └── ...
-```
+| Directory | Description |
+|-----------|-------------|
+| `backend/app/simulation` | **Core Engine:** Contains `SimPy` logic, physics models, and orchestrator. |
+| `backend/app/api` | **API Layer:** FastAPI routes for simulation control and reporting. |
+| `backend/app/schemas` | **Data Models:** Pydantic schemas for configuration and results. |
+| `frontend-v2/src/components` | **UI Components:** React components for Map, Sidebar, and Charts. |
+| `frontend-v2/src/store` | **State Management:** Zustand store for application state. |
+
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please follow these steps:
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/AmazingFeature`).
+3.  Commit your changes (`git commit -m 'Add AmazingFeature'`).
+4.  Push to the branch (`git push origin feature/AmazingFeature`).
+5.  Open a Pull Request.
+
+---
+
+**Maintained by:** Hydra Engineering
+**License:** MIT
