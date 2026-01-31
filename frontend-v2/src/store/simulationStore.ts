@@ -3,16 +3,49 @@ import axios from 'axios';
 
 const API_URL = 'http://127.0.0.1:8000/api/v1';
 
+interface SimulationStats {
+    database_pool: Record<string, number>;
+    settings: {
+        max_duration_days: number;
+        default_seed: number;
+    };
+}
+
+interface SimulationResult {
+    run_id: string;
+    city_total_swaps: number;
+    city_lost_swaps: number;
+    city_avg_wait_time: number;
+    city_throughput_per_hour: number;
+    estimated_opex_cost: number;
+    avg_charger_utilization: number;
+    avg_idle_inventory_pct: number;
+    baseline_comparison?: {
+        wait_time_delta_pct: number;
+        lost_swaps_delta: number;
+        throughput_delta_pct: number;
+        opex_delta: number;
+        utilization_delta_pct: number;
+    };
+    opex_breakdown?: {
+        energy_cost: number;
+        depreciation_cost: number;
+        logistics_cost: number;
+        total: number;
+    };
+    station_kpis: any[]; // Keep any for nested KPI for now or define deeper
+}
+
 interface SimulationState {
     isRunning: boolean;
-    stats: any | null;
-    result: any | null;
+    stats: SimulationStats | null;
+    result: SimulationResult | null;
     error: string | null;
 
     fetchStats: () => Promise<void>;
     fetchStations: () => Promise<void>;
     setRunning: (running: boolean) => void;
-    setResult: (result: any) => void;
+    setResult: (result: SimulationResult) => void;
     stations: Station[];
     demandCurve: number[];
     demandMultiplier: number;
@@ -62,6 +95,7 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         try {
             const response = await axios.get(`${API_URL}/stations`);
             // Pre-process stations if needed (e.g. add missing props)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const loadedStations = response.data.map((s: any) => ({
                 ...s,
                 type: s.type || 'CORE' // Default to CORE if from API

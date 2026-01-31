@@ -4,7 +4,7 @@ import { ScatterplotLayer, IconLayer } from '@deck.gl/layers';
 import { Map, type MapRef } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useSimulationStore } from '../store/simulationStore';
+import { useSimulationStore, Station } from '../store/simulationStore';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
@@ -67,7 +67,7 @@ export default function MapViz() {
             sizeScale: 1,
             sizeMinPixels: 8,   // Min 8px when very zoomed out (overview)
             sizeMaxPixels: 64,  // Max 64px when zoomed in (detail view)
-            getPosition: (d: any) => [d.location.lon, d.location.lat],
+            getPosition: (d: Station) => [d.location.lon, d.location.lat],
             getSize: 150, // Size in meters - feels natural at city scale
             // Smooth transitions
             transitions: {
@@ -92,6 +92,7 @@ export default function MapViz() {
 
             // KPI Override (during simulation)
             if (result?.station_kpis) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const kpi = result.station_kpis.find((k: any) => k.station_id === s.id);
                 if (kpi) {
                     if (kpi.lost_swaps > 0) color = [255, 0, 60]; // Red
@@ -117,8 +118,10 @@ export default function MapViz() {
             radiusMinPixels: 6,
             radiusMaxPixels: 30,
             lineWidthMinPixels: 2,
-            getPosition: (d: any) => [d.location.lon, d.location.lat],
+            getPosition: (d: Station) => [d.location.lon, d.location.lat],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             getRadius: (d: any) => d.radius,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             getFillColor: (d: any) => d.color,
             getLineColor: [255, 255, 255],
             updateTriggers: {
@@ -137,6 +140,7 @@ export default function MapViz() {
                 initialViewState={INITIAL_VIEW_STATE}
                 controller={true}
                 layers={layers}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 getTooltip={({ object }: any) => object && {
                     html: `
             <div style="background: rgba(0,0,0,0.9); padding: 12px; border: 1px solid #45a29e; border-radius: 4px; color: white; font-family: monospace;">
@@ -196,7 +200,6 @@ export default function MapViz() {
                 Stations: {stations.length}<br />
                 Core: {stations.filter(s => s.type === 'CORE' || !s.type).length}<br />
                 Scenario: {stations.filter(s => s.type === 'SCENARIO').length}<br />
-                Center: {mapRef.current?.getCenter().lat.toFixed(4)}, {mapRef.current?.getCenter().lng.toFixed(4)}
             </div>
         </div>
     );

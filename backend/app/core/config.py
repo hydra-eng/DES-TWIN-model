@@ -13,45 +13,45 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings with environment variable support.
-    
+
     Attributes:
         app_name: Name of the application.
         app_version: Current version string.
         debug: Enable debug mode for verbose logging.
         environment: Deployment environment (development, staging, production).
-        
+
         database_url: PostgreSQL/TimescaleDB connection string.
         redis_url: Redis connection string for job queue.
-        
+
         simulation_max_duration_days: Maximum allowed simulation duration.
         simulation_default_seed: Default random seed for reproducibility.
     """
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
-    
+
     # Application
     app_name: str = "Digital Twin Swap Station"
     app_version: str = "1.0.0"
     debug: bool = False
     environment: Literal["development", "staging", "production"] = "development"
-    
+
     # Database
     database_url: PostgresDsn = Field(
         default="postgresql://swap_admin:swap_secret_2024@localhost:5432/swap_station_twin",
         description="TimescaleDB connection string",
     )
-    
+
     # Redis
     redis_url: RedisDsn = Field(
         default="redis://localhost:6379/0",
         description="Redis connection for job queue",
     )
-    
+
     # Simulation Constraints
     simulation_max_duration_days: int = Field(
         default=30,
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
         default=1,
         description="Simulation time resolution in milliseconds",
     )
-    
+
     # Performance
     telemetry_batch_size: int = Field(
         default=100,
@@ -75,12 +75,12 @@ class Settings(BaseSettings):
         le=1000,
         description="Number of events to batch before DB insert",
     )
-    
+
     @property
     def database_url_sync(self) -> str:
         """Get synchronous database URL string."""
         return str(self.database_url)
-    
+
     @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Get cached application settings.
-    
+
     Returns:
         Settings: Application configuration instance.
     """

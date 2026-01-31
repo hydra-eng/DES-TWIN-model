@@ -1,8 +1,9 @@
-import requests
 import json
 
+import requests
+
 try:
-    r = requests.get('http://127.0.0.1:8000/api/v1/stations', timeout=30)
+    r = requests.get("http://127.0.0.1:8000/api/v1/stations", timeout=30)
     print(f"Status: {r.status_code}")
     if r.ok:
         stations = r.json()

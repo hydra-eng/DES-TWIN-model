@@ -1,6 +1,7 @@
-from app.data_loader import load_real_network
-import sys
 import os
+import sys
+
+from app.data_loader import load_real_network
 
 # Add project root to path
 sys.path.append(os.getcwd())
@@ -10,7 +11,9 @@ try:
     print(f"Stations Loaded: {len(stations)}")
     if stations:
         s = stations[0]
-        print(f"First Station: {s['name']} - Lat: {s['location']['lat']}, Lon: {s['location']['lon']}")
+        print(
+            f"First Station: {s['name']} - Lat: {s['location']['lat']}, Lon: {s['location']['lon']}"
+        )
         print(f"Type: {s.get('type')}")
     else:
         print("NO STATIONS FOUND")

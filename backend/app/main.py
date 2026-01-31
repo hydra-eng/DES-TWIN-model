@@ -10,15 +10,14 @@ This module creates and configures the FastAPI application with:
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
+from app.api.endpoints.optimization import router as opt_router
+from app.api.routes import router as sim_router
+from app.core.config import get_settings
+from app.core.logging import get_logger, setup_logging
+from app.db.connection import check_db_connection
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from app.api.routes import router as sim_router
-from app.api.endpoints.optimization import router as opt_router
-from app.core.config import get_settings
-from app.core.logging import setup_logging, get_logger
-from app.db.connection import check_db_connection
 
 # Initialize logging
 setup_logging()
@@ -31,9 +30,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager.
-    
+
     Handles startup and shutdown events.
-    
+
     Args:
         app: FastAPI application instance.
     """
@@ -44,15 +43,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         version=settings.app_version,
         environment=settings.environment,
     )
-    
+
     # Check database connection
     if check_db_connection():
         logger.info("database_connected")
     else:
         logger.warning("database_connection_failed")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("application_shutting_down")
 
@@ -86,7 +85,9 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.debug else ["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=(
+        ["*"] if settings.debug else ["http://localhost:3000", "http://localhost:5173"]
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -117,17 +118,18 @@ async def general_exception_handler(
 ) -> JSONResponse:
     """Handle unexpected exceptions."""
     logger.exception("unhandled_exception", error=str(exc))
-    
+
     content: dict[str, Any] = {
         "error": "InternalServerError",
         "message": "An unexpected error occurred",
     }
-    
+
     if settings.debug:
         import traceback
+
         content["detail"] = str(exc)
         content["traceback"] = traceback.format_exc()
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=content,
@@ -153,7 +155,7 @@ async def root() -> dict[str, str]:
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

@@ -10,12 +10,11 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
-
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models import Base
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session, sessionmaker
 
 logger = get_logger(__name__)
 
@@ -42,13 +41,13 @@ SessionLocal = sessionmaker(
 
 def get_db() -> Generator[Session, None, None]:
     """FastAPI dependency for database sessions.
-    
+
     Provides a request-scoped database session that is automatically
     closed after the request completes.
-    
+
     Yields:
         Session: SQLAlchemy session instance.
-    
+
     Example:
         >>> @router.get("/items")
         >>> async def get_items(db: Session = Depends(get_db)):
@@ -64,12 +63,12 @@ def get_db() -> Generator[Session, None, None]:
 @contextmanager
 def get_db_session() -> Generator[Session, None, None]:
     """Context manager for database sessions.
-    
+
     Use this for non-FastAPI contexts (e.g., background tasks).
-    
+
     Yields:
         Session: SQLAlchemy session instance.
-    
+
     Example:
         >>> with get_db_session() as db:
         ...     db.query(Model).all()
@@ -87,7 +86,7 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Initialize database tables.
-    
+
     Creates all tables defined in the models if they don't exist.
     Note: For production, use Alembic migrations instead.
     """
@@ -98,7 +97,7 @@ def init_db() -> None:
 
 def check_db_connection() -> bool:
     """Check if database connection is healthy.
-    
+
     Returns:
         bool: True if connection successful, False otherwise.
     """
@@ -113,7 +112,7 @@ def check_db_connection() -> bool:
 
 def get_db_stats() -> dict[str, Any]:
     """Get database connection pool statistics.
-    
+
     Returns:
         dict: Connection pool metrics.
     """

@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
-import { BarChart3, Info, TrendingUp, Calendar, Zap, AlertTriangle } from 'lucide-react';
+import { BarChart3, Info, TrendingUp, Calendar, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 export default function DemandPanel() {
     const { demandCurve, demandMultiplier, setDemandMultiplier } = useSimulationStore();
-    const [hoverValue, setHoverValue] = useState<number | null>(null);
 
     // Format data for Recharts
     const chartData = useMemo(() => {
@@ -97,7 +96,7 @@ export default function DemandPanel() {
                             tickLine={false}
                         />
                         <Tooltip
-                            content={({ active, payload, label }) => {
+                            content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                     return (
                                         <div className="bg-neutral-900 border border-neutral-600 p-2 rounded shadow-xl text-xs">

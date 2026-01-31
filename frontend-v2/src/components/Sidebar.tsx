@@ -33,7 +33,11 @@ export default function Sidebar() {
     const [useScenario, setUseScenario] = useState(false);
 
     // Interventions (keep local for now as they are scenario-specific)
-    const [interventions, setInterventions] = useState<any[]>([]);
+    const [interventions, setInterventions] = useState<Array<{
+        id: string;
+        type: string;
+        parameters: any;
+    }>>([]);
 
     useEffect(() => {
         fetchStats();
@@ -43,7 +47,7 @@ export default function Sidebar() {
         setSimRunning(true);
         setSimError(null);
 
-        const baseConfig: any = {
+        const baseConfig = {
             duration_days: duration,
             random_seed: 42,
             demand_multiplier: demandMultiplier,
@@ -86,6 +90,7 @@ export default function Sidebar() {
             console.log('Response:', response.data);
             setResult(response.data);
             setActiveTab('run');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('Simulation error:', err);
             const errorMsg = err.response?.data?.detail || err.message || 'Simulation failed';

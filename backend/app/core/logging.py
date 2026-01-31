@@ -9,19 +9,18 @@ import sys
 from typing import Any
 
 import structlog
-from structlog.types import Processor
-
 from app.core.config import get_settings
+from structlog.types import Processor
 
 
 def setup_logging() -> None:
     """Configure structured logging based on environment.
-    
+
     In development: Pretty-printed colored console output.
     In production: JSON-formatted logs for aggregation.
     """
     settings = get_settings()
-    
+
     # Shared processors for all environments
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -32,7 +31,7 @@ def setup_logging() -> None:
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
     ]
-    
+
     if settings.is_production:
         # Production: JSON output
         processors: list[Processor] = [
@@ -46,7 +45,7 @@ def setup_logging() -> None:
             *shared_processors,
             structlog.dev.ConsoleRenderer(colors=True),
         ]
-    
+
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.stdlib.BoundLogger,
@@ -54,7 +53,7 @@ def setup_logging() -> None:
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard library logging to use structlog
     logging.basicConfig(
         format="%(message)s",
@@ -65,10 +64,10 @@ def setup_logging() -> None:
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Get a structured logger instance.
-    
+
     Args:
         name: Logger name, typically __name__ of the module.
-        
+
     Returns:
         BoundLogger: Configured structured logger.
     """
@@ -83,7 +82,7 @@ def log_simulation_event(
     **kwargs: Any,
 ) -> None:
     """Log a simulation event with standard fields.
-    
+
     Args:
         logger: Logger instance to use.
         event_type: Type of simulation event (e.g., SWAP_START).

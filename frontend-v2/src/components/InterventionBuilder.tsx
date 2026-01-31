@@ -19,7 +19,8 @@ export default function InterventionBuilder({ interventions, onChange, stationId
 
     const addIntervention = (type: string) => {
         const newIntervention: Intervention = {
-            id: `int_${Date.now()}`,
+            // eslint-disable-next-line react-hooks/purity
+            id: `int_${Math.floor(Math.random() * 1000000)}`,
             type,
             description: getDescription(type),
             parameters: getDefaultParameters(type)
