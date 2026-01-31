@@ -2,11 +2,19 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MapViz from './components/MapViz';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSimulationStore } from './store/simulationStore';
 
 function App() {
+  const { fetchStations } = useSimulationStore();
   const [sidebarWidth, setSidebarWidth] = useState(384); // 384px = w-96
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+
+  // CRITICAL: Fetch stations on mount
+  useEffect(() => {
+    console.log('[App] Fetching stations from API...');
+    fetchStations();
+  }, [fetchStations]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

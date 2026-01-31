@@ -10,6 +10,7 @@ interface SimulationState {
     error: string | null;
 
     fetchStats: () => Promise<void>;
+    fetchStations: () => Promise<void>;
     setRunning: (running: boolean) => void;
     setResult: (result: any) => void;
     stations: Station[];
@@ -32,34 +33,9 @@ export type Station = {
     position?: [number, number]; // Derived for DeckGL
     color?: [number, number, number]; // Derived for DeckGL
     radius?: number; // Derived for DeckGL
+    type?: 'CORE' | 'SCENARIO'; // Protection flag
+    status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 };
-
-const DEFAULT_STATIONS: Station[] = [
-    {
-        id: "downtown",
-        name: "Downtown Hub",
-        location: { lat: 28.6139, lon: 77.2090 },
-        total_batteries: 25,
-        charger_count: 6,
-        charge_power_kw: 60.0,
-        swap_time_seconds: 90,
-        position: [77.2090, 28.6139],
-        color: [69, 162, 158], // #45a29e
-        radius: 200
-    },
-    {
-        id: "sector5",
-        name: "Sector 5 Station",
-        location: { lat: 28.5900, lon: 77.2100 },
-        total_batteries: 15,
-        charger_count: 4,
-        charge_power_kw: 60.0,
-        swap_time_seconds: 90,
-        position: [77.2100, 28.5900],
-        color: [69, 162, 158],
-        radius: 200
-    }
-];
 
 export const useSimulationStore = create<SimulationState>((set) => ({
     isRunning: false,
@@ -67,8 +43,8 @@ export const useSimulationStore = create<SimulationState>((set) => ({
     result: null,
     error: null,
 
-    // Initial State
-    stations: DEFAULT_STATIONS,
+    // Initial State - Empty by default, fetched from API
+    stations: [],
     demandCurve: [5, 3, 2, 2, 3, 6, 12, 25, 35, 30, 25, 20, 15, 18, 20, 22, 28, 40, 45, 38, 25, 15, 10, 7],
     demandMultiplier: 1.0,
 
@@ -79,6 +55,22 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         } catch (err) {
             set({ error: 'Failed to fetch stats from backend' });
             console.error(err);
+        }
+    },
+
+    fetchStations: async () => {
+        try {
+            const response = await axios.get(`${API_URL}/stations`);
+            // Pre-process stations if needed (e.g. add missing props)
+            const loadedStations = response.data.map((s: any) => ({
+                ...s,
+                type: s.type || 'CORE' // Default to CORE if from API
+            }));
+            set({ stations: loadedStations, error: null });
+        } catch (err) {
+            console.error('Failed to fetch stations:', err);
+            // Don't overwrite error if it's just initial load failure? 
+            // Better to log.
         }
     },
 

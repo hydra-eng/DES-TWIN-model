@@ -9,6 +9,7 @@ interface Station {
     charger_count: number;
     charge_power_kw: number;
     swap_time_seconds: number;
+    type?: 'CORE' | 'SCENARIO';
 }
 
 interface StationManagerProps {
@@ -27,7 +28,8 @@ export default function StationManager({ stations, onChange }: StationManagerPro
             total_batteries: 20,
             charger_count: 4,
             charge_power_kw: 60,
-            swap_time_seconds: 90
+            swap_time_seconds: 90,
+            type: 'SCENARIO'
         };
         onChange([...stations, newStation]);
         // Open the new station in edit mode
@@ -61,7 +63,8 @@ export default function StationManager({ stations, onChange }: StationManagerPro
             {/* Station List */}
             <div className="space-y-3 max-h-96 overflow-y-auto">
                 {stations.map((station) => (
-                    <div key={station.id} className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div key={station.id} className={`bg-neutral-800 border ${station.type === 'CORE' ? 'border-neon-blue/30' : 'border-neutral-700'} rounded p-3 relative overflow-hidden`}>
+                        {station.type === 'CORE' && <div className="absolute top-0 right-0 w-2 h-2 bg-neon-blue rounded-bl"></div>}
                         {editingId === station.id ? (
                             // Edit Mode
                             <div className="space-y-3">
@@ -158,7 +161,10 @@ export default function StationManager({ stations, onChange }: StationManagerPro
                             <>
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
-                                        <div className="font-bold text-white text-sm">{station.name}</div>
+                                        <div className="font-bold text-white text-sm flex items-center gap-2">
+                                            {station.name}
+                                            {station.type === 'CORE' && <span className="text-[10px] bg-neon-blue/20 text-neon-blue px-1.5 rounded">CORE</span>}
+                                        </div>
                                         <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                                             <MapPin size={12} />
                                             {station.location.lat.toFixed(4)}, {station.location.lon.toFixed(4)}
@@ -174,10 +180,11 @@ export default function StationManager({ stations, onChange }: StationManagerPro
                                         </button>
                                         <button
                                             onClick={() => deleteStation(station.id)}
-                                            className="p-1.5 bg-red-900/30 hover:bg-red-900/50 rounded transition-colors"
-                                            title="Delete station"
+                                            disabled={station.type === 'CORE'}
+                                            className={`p-1.5 rounded transition-colors ${station.type === 'CORE' ? 'bg-neutral-800 cursor-not-allowed opacity-50' : 'bg-red-900/30 hover:bg-red-900/50'}`}
+                                            title={station.type === 'CORE' ? "Cannot delete Core Infrastructure" : "Delete station"}
                                         >
-                                            <Trash2 size={12} className="text-red-400" />
+                                            <Trash2 size={12} className={station.type === 'CORE' ? "text-gray-600" : "text-red-400"} />
                                         </button>
                                     </div>
                                 </div>

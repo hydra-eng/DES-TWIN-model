@@ -62,6 +62,23 @@ async def get_stats() -> dict[str, Any]:
     }
 
 
+@router.get("/stations")
+async def get_stations() -> list[dict[str, Any]]:
+    """Get all stations loaded from real data.
+    
+    Loads station data from Partners.xlsx, enriched with inventory
+    from BatteryLogs.xlsx if available.
+    
+    Returns:
+        list: List of station configurations with id, name, location, etc.
+    """
+    from app.data_loader import load_real_network
+    
+    stations, _ = load_real_network()
+    logger.info("stations_endpoint_called", station_count=len(stations))
+    return stations
+
+
 @router.post(
     "/start",
     response_model=SimulationResult,

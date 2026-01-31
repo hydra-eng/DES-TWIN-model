@@ -116,6 +116,8 @@ class StationConfig(BaseModel):
     )
     cooldown_seconds: int = Field(default=60, ge=0, le=300, description="Post-swap cooldown before charging")
     battery_config: BatteryConfig = Field(default_factory=BatteryConfig)
+    type: str = Field(default="SCENARIO", description="Station type: CORE or SCENARIO")
+    status: str = Field(default="ACTIVE", description="Operational status: ACTIVE, INACTIVE, MAINTENANCE")
     
     @field_validator("name", mode="before")
     @classmethod

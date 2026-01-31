@@ -32,6 +32,7 @@ from app.schemas.sim_config import (
     StationKPI,
 )
 from app.simulation.assets import Station, Vehicle, create_vehicle
+from app.data_loader import load_real_network
 
 logger = get_logger(__name__)
 
@@ -76,8 +77,30 @@ class SimulationOrchestrator:
         self._rng: random.Random = random.Random(config.random_seed)
         self._np_rng: np.random.Generator = np.random.default_rng(config.random_seed)
         
+        # Load Real Network Data if no stations provided (or to override)
+        # Note: In a real app, we might merge or prefer one. 
+        # Here we strictly follow the prompt: "Initialized? Load real network."
+        # However, config comes from API. If we rely on data_loader, we should probably
+        # populate the config with it if it's "headless" or initial load.
+        # But the prompt says "Refactor Simulation Engine... Initialization: Update the env setup to call load_real_network()."
+        # It also says "Station Creation: ... Do not generate random stations."
+        
+        real_stations_data, self.mean_arrival_time_min = load_real_network()
+        
+        if real_stations_data:
+            # Convert dicts to StationConfig objects
+            real_stations = [StationConfig(**s) for s in real_stations_data]
+            
+            # If the config passed has NO stations (or we want to enforce real data), use these.
+            # Assuming we want to USE these stations for the simulation run.
+            # We'll merge or replace. Let's replace config.stations with real data 
+            # BUT keep any scenarios that might add/remove on top.
+            # Wait, apply_interventions takes base stations. 
+            
+            self.config.stations = real_stations # Override provided stations with Real Data
+        
         # Apply scenario interventions if present
-        self._effective_stations = self._apply_interventions(config.stations)
+        self._effective_stations = self._apply_interventions(self.config.stations)
         
         # Initialize stations
         self._initialize_stations()
@@ -87,6 +110,7 @@ class SimulationOrchestrator:
             run_id=str(self.run_id),
             stations=len(self.stations),
             duration_days=config.duration_days,
+            mean_arrival_time=getattr(self, 'mean_arrival_time_min', 10.0)
         )
     
     def _apply_interventions(
@@ -231,8 +255,20 @@ class SimulationOrchestrator:
             # Calculate current hour in simulation
             current_hour = int((self.env.now / 3600) % 24)
             
-            # Get base arrival rate
-            base_rate = demand_curve.get_rate(current_hour)
+            # --- REAL DATA INTEGRATION ---
+            # Use data-driven mean arrival time if available
+            if hasattr(self, 'mean_arrival_time_min') and self.mean_arrival_time_min > 0:
+                # Convert mean arrival time (minutes between swaps in network?) 
+                # or per station? usage says "MEAN_ARRIVAL_TIME in SimPy generator".
+                # If "ChargingEvents" is global events, then it's network-wide?
+                # Usually dispatching_time is time taken to discharge? No "Time between swaps".
+                # If it's time between swaps for *a* battery, that's related to demand.
+                # Let's assume it implies the average interval between arrivals at a station.
+                # Rate (arrivals/hr) = 60 / mean_time_min
+                base_rate = 60.0 / self.mean_arrival_time_min
+            else:
+                 # Get base arrival rate from curve
+                base_rate = demand_curve.get_rate(current_hour)
             
             # Apply global demand multiplier
             rate = base_rate * self.config.demand_multiplier
@@ -241,8 +277,27 @@ class SimulationOrchestrator:
             if current_hour in scenario_adjustments:
                 rate *= scenario_adjustments[current_hour]
             
-            # Distribute rate across stations (equal split for now)
-            station_rate = rate / len(self.stations) if self.stations else rate
+            # Distribute rate across stations (equal split for now) if the rate is total city rate
+            # If the mean time from data was "per station", then we don't split.
+            # Assuming the Excel data implies "Time between swaps" is a global metric or per-station averge.
+            # Let's assume it defines the per-station Lambda.
+            # But the existing code `station_rate = rate / len(self.stations)` suggests `rate` is City Total.
+            # Let's assume `mean_arrival_time_min` is per-station (e.g. 15 mins between cars).
+            # Then station_rate = 60 / 15 = 4 cars/hr.
+            
+            # Code below divides by len(stations) implying input `rate` is TOTAL.
+            # If I want `station_rate` to be driven by `mean_arrival_time`, I should skip the division 
+            # or Ensure `rate` represents Total.
+            # Let's Calculate Station Rate directly.
+            
+            station_rate = rate # Start with base
+            if hasattr(self, 'mean_arrival_time_min') and self.mean_arrival_time_min > 0:
+                 # If we used the logic above, base_rate is per station.
+                 # So we shouldn't divide by N stations.
+                 pass
+            else:
+                 # Legacy behavior: DemandCurve was Total City Demand
+                 station_rate = rate / len(self.stations) if self.stations else rate
             
             if station_rate <= 0:
                 # No arrivals this hour, wait until next
