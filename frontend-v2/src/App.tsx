@@ -43,10 +43,15 @@ function App() {
   }, [isResizing]);
 
   return (
-    <div className="h-screen w-screen bg-black flex overflow-hidden relative">
-      {/* Sidebar */}
+    <div className="h-screen w-screen bg-black relative overflow-hidden">
+      {/* Map - Full Screen Background */}
+      <div className="absolute inset-0 z-0">
+        <MapViz />
+      </div>
+
+      {/* Sidebar - Floating Panel */}
       <div
-        className={`relative transition-all duration-300 ease-in-out flex-shrink-0 ${isCollapsed ? 'w-0' : ''
+        className={`absolute top-0 left-0 h-full z-10 transition-all duration-300 ease-in-out shadow-2xl ${isCollapsed ? 'w-0' : ''
           }`}
         style={{ width: isCollapsed ? 0 : `${sidebarWidth}px` }}
       >
@@ -57,7 +62,7 @@ function App() {
         {/* Resize Handle */}
         {!isCollapsed && (
           <div
-            className="absolute top-0 right-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-neon-blue/30 transition-colors group z-40"
+            className="absolute top-0 right-0 w-2 h-full cursor-col-resize bg-transparent hover:bg-neon-blue/30 transition-colors group z-20"
             onMouseDown={handleMouseDown}
           >
             {/* Drag indicator */}
@@ -74,29 +79,19 @@ function App() {
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute top-6 z-50 bg-gradient-to-r from-neon-blue to-neon-green hover:opacity-90 text-white p-3 rounded-r-xl shadow-2xl transition-all hover:shadow-neon-blue/50 flex items-center gap-2 group"
+        className="absolute top-6 z-50 bg-neutral-900/80 backdrop-blur-md border border-neon-blue/20 hover:border-neon-blue text-white p-2 rounded-r-xl shadow-2xl transition-all flex items-center gap-2 group"
         style={{
-          left: isCollapsed ? '0' : `${sidebarWidth - 2}px`,
+          left: isCollapsed ? '0' : `${sidebarWidth}px`,
           transition: 'left 300ms ease-in-out'
         }}
         title={isCollapsed ? 'Open Control Panel' : 'Close Control Panel'}
       >
         {isCollapsed ? (
-          <>
-            <ChevronRight size={20} />
-            <span className="text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity max-w-0 group-hover:max-w-xs overflow-hidden">
-              Open
-            </span>
-          </>
+          <ChevronRight size={20} className="text-neon-blue" />
         ) : (
-          <ChevronLeft size={20} />
+          <ChevronLeft size={20} className="text-gray-400 group-hover:text-white" />
         )}
       </button>
-
-      {/* Map */}
-      <div className="flex-1 h-full">
-        <MapViz />
-      </div>
 
       {/* Resize Overlay - prevents map from capturing mouse events while resizing */}
       {isResizing && (
